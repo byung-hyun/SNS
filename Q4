@@ -1,0 +1,51 @@
+import os
+import requests
+import time
+from selenium import webdriver
+from bs4 import BeautifulSoup
+
+print("="*80)
+print(" 연습문제 7-4. 구글 사이트에서 pdf 파일을 검색하여 수집하는 크롤러")
+print("="*80)
+keyword = input("1. 크롤링할 키워드를 무엇입니까?: ")
+file_count = int(input("2. 크롤링 할 건수는 몇건입니까?: "))
+folder = input("3. 파일이 저장될 경로만 쓰세요(예: c:/temp): ")
+
+if os.path.isdir(folder):
+    print(f"입력하신 경로가 존재하여 {folder} 폴더에 저장하겠습니다.")
+else:
+    print("입력하신 경로가 존재하지 않습니다.")
+
+driver = webdriver.Chrome()
+
+search_url = f"https://www.google.com/search?q={keyword}+filetype:pdf"
+driver.get(search_url)
+time.sleep(2) 
+
+pdf_total = []
+while len(pdf_total) < file_count:
+    soup = BeautifulSoup(driver.page_source, 'html.parser')    
+    pdf_search = soup.select('a')
+    for i in pdf_search:
+        href = i.get('href')
+        if href and href.endswith('.pdf') and href not in pdf_total:
+            pdf_total.append(href)
+            if len(pdf_total) >= file_count:
+                break
+
+pdf_count = 0
+for pdf_link in pdf_total[:file_count]:
+    pdf_name = os.path.basename(pdf_link)
+    pdf_folder = os.path.join(folder, pdf_name)
+    
+    try:
+        response = requests.get(pdf_link)
+        with open(pdf_folder, 'wb') as p:
+                p.write(response.content)
+        pdf_count += 1
+        print(f"{pdf_count}/{file_count} 수집 완료")
+    except :
+        print("다운로드에 실패하였습니다.")
+
+driver.quit()
+print(f"총 {pdf_count}개의 PDF 파일을 다운로드했습니다.")
